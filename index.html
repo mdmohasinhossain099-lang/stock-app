@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Stock App</title>
+</head>
+<body>
+
+<h2>Login</h2>
+<input id="name" placeholder="Enter Name">
+<button onclick="login()">Login</button>
+
+<div id="app" style="display:none;">
+  <h2>Stock Manager</h2>
+
+  <input id="item" placeholder="Item name">
+  <input id="qty" type="number" placeholder="Quantity">
+
+  <button onclick="add()">Add</button>
+  <button onclick="minus()">Minus</button>
+
+  <h3>Stock List</h3>
+  <div id="list"></div>
+
+  <h3>History</h3>
+  <div id="history"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// 🔥 তোমার Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyDGBmkM66osUUrIzt8KsgU7u9YiuHPLPPw",
+  authDomain: "stockapp-3d9f9.firebaseapp.com",
+  projectId: "stockapp-3d9f9",
+  storageBucket: "stockapp-3d9f9.firebasestorage.app",
+  messagingSenderId: "448917511917",
+  appId: "1:448917511917:web:02ca98e7a805d44d57b6e4"
+};
+
+// Initialize
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let username = "";
+
+// 🔐 Login
+window.login = async function(){
+  let nameInput = document.getElementById("name").value.toLowerCase().trim();
+
+  if(!nameInput){
+    alert("Name dao!");
+    return;
+  }
+
+  const ref = doc(db, "users", nameInput);
+  const snap = await getDoc(ref);
+
+  if(snap.exists()){
+    username = nameInput;
+    document.getElementById("app").style.display = "block";
+  } else {
+    alert("❌ Access Denied!");
+  }
+}
+
+// ➕ Add
+window.add = async function(){
+  let item = document.getElementById("item").value;
+  let qty = parseInt(document.getElementById("qty").value);
+
+  const ref = doc(db, "stock", item);
+  const snap = await getDoc(ref);
+
+  let current = snap.exists() ? snap.data().qty : 0;
+
+  await setDoc(ref, { qty: current + qty });
+
+  await addDoc(collection(db, "history"), {
+    item, qty, type:"add", user:username, time:new Date()
+  });
+}
+
+// ➖ Minus
+window.minus = async function(){
+  let item = document.getElementById("item").value;
+  let qty = parseInt(document.getElementById("qty").value);
+
+  const ref = doc(db, "stock", item);
+  const snap = await getDoc(ref);
+
+  let current = snap.exists() ? snap.data().qty : 0;
+
+  await setDoc(ref, { qty: current - qty });
+
+  await addDoc(collection(db, "history"), {
+    item, qty, type:"minus", user:username, time:new Date()
+  });
+}
+
+// 🔄 Realtime Stock
+onSnapshot(collection(db, "stock"), (snapshot)=>{
+  let out = "";
+  snapshot.forEach(doc=>{
+    out += doc.id + " = " + doc.data().qty + "<br>";
+  });
+  document.getElementById("list").innerHTML = out;
+});
+
+// 📜 Realtime History
+onSnapshot(collection(db, "history"), (snapshot)=>{
+  let out = "";
+  snapshot.forEach(doc=>{
+    let d = doc.data();
+    out += d.item + " (" + d.type + " " + d.qty + ") by " + d.user + "<br>";
+  });
+  document.getElementById("history").innerHTML = out;
+});
+</script>
+
+</body>
+</html>
