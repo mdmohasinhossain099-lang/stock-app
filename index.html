@@ -2,121 +2,258 @@
 <html>
 <head>
   <title>Stock App</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f0f2f5;
+      text-align: center;
+    }
+
+    .box {
+      background: white;
+      padding: 20px;
+      margin: 20px auto;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 10px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+    }
+
+    th {
+      background: #007bff;
+      color: white;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
 </head>
+
 <body>
 
-<h2>Login</h2>
-<input id="name" placeholder="Enter Name">
-<button onclick="login()">Login</button>
+<div class="box" id="loginBox">
+  <h2>Login</h2>
+  <input id="username" placeholder="Username"><br>
+  <input id="password" type="password" placeholder="4 digit password"><br>
+  <button onclick="login()">Login</button>
+</div>
 
-<div id="app" style="display:none;">
+<div class="box" id="app" style="display:none;">
   <h2>Stock Manager</h2>
 
   <input id="item" placeholder="Item name">
   <input id="qty" type="number" placeholder="Quantity">
+  <input id="loc" placeholder="Location"><br>
 
   <button onclick="add()">Add</button>
   <button onclick="minus()">Minus</button>
 
-  <h3>Stock List</h3>
-  <div id="list"></div>
+  <h3>Stock Table</h3>
+  <table id="stockTable">
+    <tr>
+      <th>Item</th>
+      <th>Qty</th>
+      <th>Location</th>
+    </tr>
+  </table>
 
   <h3>History</h3>
-  <div id="history"></div>
+  <button onclick="clearHistory()" id="clearBtn" style="display:none;">Clear History</button>
+
+  <table id="historyTable">
+    <tr>
+      <th>Item</th>
+      <th>Action</th>
+      <th>User</th>
+    </tr>
+  </table>
+
+  <div id="adminPanel" style="display:none;">
+    <h3>Admin Panel</h3>
+    <input id="newUser" placeholder="New Username">
+    <input id="newPass" placeholder="4 digit password">
+    <button onclick="addUser()">Add User</button><br>
+
+    <input id="changePass" placeholder="New Admin Password">
+    <button onclick="changeAdminPass()">Change Admin Password</button>
+  </div>
+
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-// 🔥 তোমার Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyDGBmkM66osUUrIzt8KsgU7u9YiuHPLPPw",
-  authDomain: "stockapp-3d9f9.firebaseapp.com",
-  projectId: "stockapp-3d9f9",
-  storageBucket: "stockapp-3d9f9.firebasestorage.app",
-  messagingSenderId: "448917511917",
-  appId: "1:448917511917:web:02ca98e7a805d44d57b6e4"
+<script>
+let users = {
+  "mohasin": "1234"
 };
 
-// Initialize
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+let stock = {};
+let history = [];
+let currentUser = "";
 
-let username = "";
+// LOGIN
+function login(){
+  let u = document.getElementById("username").value;
+  let p = document.getElementById("password").value;
 
-// 🔐 Login
-window.login = async function(){
-  let nameInput = document.getElementById("name").value.toLowerCase().trim();
+  if(users[u] && users[u] === p){
+    currentUser = u;
+    document.getElementById("loginBox").style.display="none";
+    document.getElementById("app").style.display="block";
 
-  if(!nameInput){
-    alert("Name dao!");
+    if(u === "mohasin"){
+      document.getElementById("adminPanel").style.display="block";
+      document.getElementById("clearBtn").style.display="inline-block";
+    }
+
+  } else {
+    alert("Wrong login!");
+  }
+}
+
+// ADD
+function add(){
+  let item = document.getElementById("item").value;
+  let qty = parseInt(document.getElementById("qty").value);
+  let loc = document.getElementById("loc").value;
+
+  if(isNaN(qty)){
+    alert("Quantity number hote hobe!");
     return;
   }
 
-  const ref = doc(db, "users", nameInput);
-  const snap = await getDoc(ref);
-
-  if(snap.exists()){
-    username = nameInput;
-    document.getElementById("app").style.display = "block";
-  } else {
-    alert("❌ Access Denied!");
+  if(!stock[item]){
+    stock[item] = {qty:0, loc:loc};
   }
+
+  stock[item].qty += qty;
+  stock[item].loc = loc;
+
+  history.push({item, action:"Add "+qty, user:currentUser});
+
+  render();
 }
 
-// ➕ Add
-window.add = async function(){
+// MINUS
+function minus(){
   let item = document.getElementById("item").value;
   let qty = parseInt(document.getElementById("qty").value);
+  let loc = document.getElementById("loc").value;
 
-  const ref = doc(db, "stock", item);
-  const snap = await getDoc(ref);
+  if(isNaN(qty)){
+    alert("Quantity number hote hobe!");
+    return;
+  }
 
-  let current = snap.exists() ? snap.data().qty : 0;
+  if(!stock[item]){
+    stock[item] = {qty:0, loc:loc};
+  }
 
-  await setDoc(ref, { qty: current + qty });
+  stock[item].qty -= qty;
+  stock[item].loc = loc;
 
-  await addDoc(collection(db, "history"), {
-    item, qty, type:"add", user:username, time:new Date()
+  history.push({item, action:"Minus "+qty, user:currentUser});
+
+  render();
+}
+
+// RENDER TABLE
+function render(){
+  let table = document.getElementById("stockTable");
+  table.innerHTML = `
+    <tr>
+      <th>Item</th>
+      <th>Qty</th>
+      <th>Location</th>
+    </tr>
+  `;
+
+  for(let i in stock){
+    table.innerHTML += `
+      <tr>
+        <td>${i}</td>
+        <td>${stock[i].qty}</td>
+        <td>${stock[i].loc}</td>
+      </tr>
+    `;
+  }
+
+  let htable = document.getElementById("historyTable");
+  htable.innerHTML = `
+    <tr>
+      <th>Item</th>
+      <th>Action</th>
+      <th>User</th>
+    </tr>
+  `;
+
+  history.forEach(h=>{
+    htable.innerHTML += `
+      <tr>
+        <td>${h.item}</td>
+        <td>${h.action}</td>
+        <td>${h.user}</td>
+      </tr>
+    `;
   });
 }
 
-// ➖ Minus
-window.minus = async function(){
-  let item = document.getElementById("item").value;
-  let qty = parseInt(document.getElementById("qty").value);
-
-  const ref = doc(db, "stock", item);
-  const snap = await getDoc(ref);
-
-  let current = snap.exists() ? snap.data().qty : 0;
-
-  await setDoc(ref, { qty: current - qty });
-
-  await addDoc(collection(db, "history"), {
-    item, qty, type:"minus", user:username, time:new Date()
-  });
+// CLEAR HISTORY (admin only)
+function clearHistory(){
+  history = [];
+  render();
 }
 
-// 🔄 Realtime Stock
-onSnapshot(collection(db, "stock"), (snapshot)=>{
-  let out = "";
-  snapshot.forEach(doc=>{
-    out += doc.id + " = " + doc.data().qty + "<br>";
-  });
-  document.getElementById("list").innerHTML = out;
-});
+// ADD USER (admin)
+function addUser(){
+  let u = document.getElementById("newUser").value;
+  let p = document.getElementById("newPass").value;
 
-// 📜 Realtime History
-onSnapshot(collection(db, "history"), (snapshot)=>{
-  let out = "";
-  snapshot.forEach(doc=>{
-    let d = doc.data();
-    out += d.item + " (" + d.type + " " + d.qty + ") by " + d.user + "<br>";
-  });
-  document.getElementById("history").innerHTML = out;
-});
+  if(p.length !== 4){
+    alert("Password 4 digit hote hobe!");
+    return;
+  }
+
+  users[u] = p;
+  alert("User added!");
+}
+
+// CHANGE ADMIN PASSWORD
+function changeAdminPass(){
+  let p = document.getElementById("changePass").value;
+
+  if(p.length !== 4){
+    alert("Password 4 digit hote hobe!");
+    return;
+  }
+
+  users["mohasin"] = p;
+  alert("Admin password changed!");
+}
 </script>
 
 </body>
