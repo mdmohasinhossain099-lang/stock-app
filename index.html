@@ -1,47 +1,82 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Stock App</title>
-
+  <title>Stock Manager</title>
   <style>
-    body { font-family: Arial; text-align:center; background:#f0f2f5; }
-    input, button { padding:10px; margin:5px; }
-    table { width:100%; margin-top:10px; border-collapse: collapse; }
-    th, td { border:1px solid #ccc; padding:8px; }
-    th { background:#007bff; color:white; }
-    .box { background:white; padding:20px; margin:20px auto; width:90%; max-width:500px; border-radius:10px; }
+    body {
+      font-family: Arial;
+      background: #f4f6f9;
+      text-align: center;
+    }
+    .box {
+      background: white;
+      padding: 20px;
+      margin: 20px auto;
+      width: 95%;
+      max-width: 700px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      width: 90%;
+      max-width: 200px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    table {
+      width: 100%;
+      margin-top: 10px;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    th {
+      background: #007bff;
+      color: white;
+    }
   </style>
 </head>
 
 <body>
 
 <div class="box" id="loginBox">
-  <h2>Login</h2>
+  <h2>🔐 Login</h2>
   <input id="username" placeholder="Username"><br>
   <input id="password" placeholder="4 digit password"><br>
   <button onclick="login()">Login</button>
 </div>
 
 <div class="box" id="app" style="display:none;">
-  <h2>Stock Manager</h2>
+  <h2>📦 Stock Manager</h2>
 
   <input id="item" placeholder="Parts name">
   <input id="qty" type="number" placeholder="Quantity">
   <input id="loc" placeholder="Location">
   <input id="quality" placeholder="Quality"><br>
 
-  <button onclick="add()">Add</button>
-  <button onclick="minus()">Minus</button>
+  <button onclick="add()">➕ Add</button>
+  <button onclick="minus()">➖ Minus</button>
 
-  <h3>Stock</h3>
+  <h3>📊 Stock List</h3>
   <table id="stockTable"></table>
 
-  <h3>History</h3>
-  <button onclick="clearHistory()" id="clearBtn" style="display:none;">Clear History</button>
+  <h3>📜 History</h3>
   <table id="historyTable"></table>
 
   <div id="adminPanel" style="display:none;">
-    <h3>Admin Panel</h3>
+    <h3>👑 Admin Panel</h3>
+
     <input id="newUser" placeholder="New Username">
     <input id="newPass" placeholder="4 digit password">
     <button onclick="addUser()">Add User</button><br>
@@ -88,7 +123,6 @@ window.login = async function(){
 
     if(u === "mohasin"){
       document.getElementById("adminPanel").style.display="block";
-      document.getElementById("clearBtn").style.display="inline";
     }
 
   } else {
@@ -99,6 +133,8 @@ window.login = async function(){
 // ➕ ADD
 window.add = async function(){
   let item = document.getElementById("item").value;
+  let safeItem = item.replaceAll("/", "_");
+
   let qty = parseInt(document.getElementById("qty").value);
   let loc = document.getElementById("loc").value;
   let quality = document.getElementById("quality").value;
@@ -108,12 +144,13 @@ window.add = async function(){
     return;
   }
 
-  const ref = doc(db, "stock", item);
+  const ref = doc(db, "stock", safeItem);
   const snap = await getDoc(ref);
 
   let current = snap.exists() ? snap.data().qty : 0;
 
   await setDoc(ref, {
+    name: item,
     qty: current + qty,
     loc,
     quality
@@ -127,6 +164,8 @@ window.add = async function(){
 // ➖ MINUS
 window.minus = async function(){
   let item = document.getElementById("item").value;
+  let safeItem = item.replaceAll("/", "_");
+
   let qty = parseInt(document.getElementById("qty").value);
   let loc = document.getElementById("loc").value;
   let quality = document.getElementById("quality").value;
@@ -136,12 +175,13 @@ window.minus = async function(){
     return;
   }
 
-  const ref = doc(db, "stock", item);
+  const ref = doc(db, "stock", safeItem);
   const snap = await getDoc(ref);
 
   let current = snap.exists() ? snap.data().qty : 0;
 
   await setDoc(ref, {
+    name: item,
     qty: current - qty,
     loc,
     quality
@@ -172,24 +212,19 @@ window.deleteUser = async function(){
   alert("User deleted!");
 };
 
-// 🧹 CLEAR HISTORY
-window.clearHistory = async function(){
-  alert("Manual delete from Firebase needed");
-};
-
-// 🔄 REALTIME STOCK
+// 📊 STOCK VIEW
 onSnapshot(collection(db, "stock"), (snapshot)=>{
-  let out = `<tr><th>Item</th><th>Qty</th><th>Location</th><th>Quality</th></tr>`;
+  let out = `<tr><th>Parts</th><th>Qty</th><th>Location</th><th>Quality</th></tr>`;
   snapshot.forEach(doc=>{
     let d = doc.data();
-    out += `<tr><td>${doc.id}</td><td>${d.qty}</td><td>${d.loc}</td><td>${d.quality}</td></tr>`;
+    out += `<tr><td>${d.name}</td><td>${d.qty}</td><td>${d.loc}</td><td>${d.quality}</td></tr>`;
   });
   document.getElementById("stockTable").innerHTML = out;
 });
 
-// 📜 HISTORY
+// 📜 HISTORY VIEW
 onSnapshot(collection(db, "history"), (snapshot)=>{
-  let out = `<tr><th>Item</th><th>Action</th><th>User</th></tr>`;
+  let out = `<tr><th>Parts</th><th>Action</th><th>User</th></tr>`;
   snapshot.forEach(doc=>{
     let d = doc.data();
     out += `<tr><td>${d.item}</td><td>${d.type} ${d.qty}</td><td>${d.user}</td></tr>`;
