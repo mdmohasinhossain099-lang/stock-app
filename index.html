@@ -4,48 +4,63 @@
   <title>Stock Manager</title>
 
   <style>
-    body {
+    body{
       font-family: Arial;
-      background: #f4f6f9;
-      margin: 0;
-      padding: 0;
+      background:#f4f6f9;
+      margin:0;
+      padding:0;
     }
 
-    .box {
-      background: white;
-      padding: 20px;
-      margin: 20px;
-      width: calc(100% - 40px);
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    .box{
+      background:white;
+      width:95%;
+      margin:20px auto;
+      padding:20px;
+      border-radius:10px;
+      box-shadow:0 0 10px rgba(0,0,0,0.1);
     }
 
-    input, button {
-      padding: 10px;
-      margin: 5px;
+    h2,h3{
+      text-align:center;
     }
 
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
+    input{
+      padding:10px;
+      margin:5px;
+      width:220px;
+      font-size:16px;
     }
 
-    table {
-      width: 100%;
-      margin-top: 10px;
-      border-collapse: collapse;
+    button{
+      padding:10px 20px;
+      margin:5px;
+      background:#007bff;
+      color:white;
+      border:none;
+      cursor:pointer;
+      font-size:16px;
+      border-radius:5px;
     }
 
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
+    button:hover{
+      background:#0056b3;
     }
 
-    th {
-      background: #007bff;
-      color: white;
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+    }
+
+    th,td{
+      border:1px solid #ccc;
+      padding:10px;
+      text-align:center;
+    }
+
+    th{
+      background:#007bff;
+      color:white;
     }
   </style>
 </head>
@@ -53,175 +68,314 @@
 <body>
 
 <div class="box" id="loginBox">
-  <h2>Login</h2>
+
+  <h2>🔐 Login</h2>
+
   <input id="username" placeholder="Username">
   <input id="password" placeholder="Password">
+
+  <br>
+
   <button onclick="login()">Login</button>
+
 </div>
 
-<div class="box" id="app" style="display:none;">
-  <h2>Stock Manager</h2>
+<div class="box" id="appBox" style="display:none;">
 
-  <input id="item" placeholder="Parts name">
+  <h2>📦 Stock Manager</h2>
+
+  <input id="item" placeholder="Parts Name">
   <input id="qty" type="number" placeholder="Quantity">
   <input id="loc" placeholder="Location">
   <input id="quality" placeholder="Quality">
 
   <br>
 
-  <button onclick="add()">Add</button>
-  <button onclick="minus()">Minus</button>
+  <button onclick="addStock()">➕ Add</button>
+  <button onclick="minusStock()">➖ Minus</button>
 
-  <h3>Stock</h3>
+  <h3>📊 Stock List</h3>
+
   <table id="stockTable"></table>
 
-  <h3>History</h3>
+  <h3>📜 History</h3>
+
   <table id="historyTable"></table>
 
   <div id="adminPanel" style="display:none;">
-    <h3>Admin Panel</h3>
 
-    <input id="newUser" placeholder="New User">
-    <input id="newPass" placeholder="Password">
+    <h3>👑 Admin Panel</h3>
+
+    <input id="newUser" placeholder="New Username">
+    <input id="newPass" placeholder="New Password">
+
     <button onclick="addUser()">Add User</button>
 
-    <br>
+    <br><br>
 
-    <input id="changePass" placeholder="New Admin Password">
-    <button onclick="changeAdminPass()">Change Admin Password</button>
+    <input id="adminNewPass" placeholder="Change Admin Password">
+
+    <button onclick="changeAdminPass()">Change Password</button>
+
   </div>
+
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
 import {
-  getFirestore, doc, getDoc, setDoc, collection,
-  addDoc, onSnapshot
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  addDoc,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
+
   apiKey: "AIzaSyDGBmkM66osUUrIzt8KsgU7u9YiuHPLPPw",
+
   authDomain: "stockapp-3d9f9.firebaseapp.com",
+
   projectId: "stockapp-3d9f9"
+
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
+
 const db = getFirestore(firebaseApp);
 
 let currentUser = "";
 
+
 // LOGIN
 window.login = async function(){
-  let u = username.value;
-  let p = password.value;
+
+  let u = document.getElementById("username").value;
+
+  let p = document.getElementById("password").value;
 
   let snap = await getDoc(doc(db,"users",u));
 
   if(snap.exists() && snap.data().pass == p){
-    currentUser = u;
-    loginBox.style.display="none";
-    app.style.display="block";
 
-    if(u=="mohasin"){
-      adminPanel.style.display="block";
+    currentUser = u;
+
+    document.getElementById("loginBox").style.display = "none";
+
+    document.getElementById("appBox").style.display = "block";
+
+    if(u == "mohasin"){
+
+      document.getElementById("adminPanel").style.display = "block";
+
     }
 
-  } else {
-    alert("Wrong login");
+  }else{
+
+    alert("Wrong Login");
+
   }
+
 };
 
-// ADD
-window.add = async function(){
+
+// ADD STOCK
+window.addStock = async function(){
 
   let item = document.getElementById("item").value;
+
   let safeItem = item.replaceAll("/", "_");
 
   let qty = parseInt(document.getElementById("qty").value);
+
   let loc = document.getElementById("loc").value;
+
   let quality = document.getElementById("quality").value;
 
   if(isNaN(qty)){
-    alert("Number only");
+
+    alert("Quantity must be number");
+
     return;
+
   }
 
   let ref = doc(db,"stock",safeItem);
+
   let snap = await getDoc(ref);
 
   let current = snap.exists() ? snap.data().qty : 0;
 
   await setDoc(ref,{
+
     name:item,
     qty:current + qty,
-    loc,
-    quality
+    loc:loc,
+    quality:quality
+
   });
 
   await addDoc(collection(db,"history"),{
-    item,qty,type:"add",user:currentUser
+
+    item:item,
+    qty:qty,
+    type:"ADD",
+    user:currentUser
+
   });
+
 };
 
-// MINUS
-window.minus = async function(){
+
+// MINUS STOCK
+window.minusStock = async function(){
 
   let item = document.getElementById("item").value;
+
   let safeItem = item.replaceAll("/", "_");
 
   let qty = parseInt(document.getElementById("qty").value);
+
   let loc = document.getElementById("loc").value;
+
   let quality = document.getElementById("quality").value;
 
+  if(isNaN(qty)){
+
+    alert("Quantity must be number");
+
+    return;
+
+  }
+
   let ref = doc(db,"stock",safeItem);
+
   let snap = await getDoc(ref);
 
   let current = snap.exists() ? snap.data().qty : 0;
 
   await setDoc(ref,{
+
     name:item,
     qty:current - qty,
-    loc,
-    quality
+    loc:loc,
+    quality:quality
+
   });
 
   await addDoc(collection(db,"history"),{
-    item,qty,type:"minus",user:currentUser
+
+    item:item,
+    qty:qty,
+    type:"MINUS",
+    user:currentUser
+
   });
+
 };
 
-// ADMIN PASS CHANGE
+
+// ADD USER
+window.addUser = async function(){
+
+  let u = document.getElementById("newUser").value;
+
+  let p = document.getElementById("newPass").value;
+
+  await setDoc(doc(db,"users",u),{
+
+    pass:p
+
+  });
+
+  alert("User Added");
+
+};
+
+
+// CHANGE ADMIN PASSWORD
 window.changeAdminPass = async function(){
-  let newPass = document.getElementById("changePass").value;
+
+  let newPass = document.getElementById("adminNewPass").value;
 
   await setDoc(doc(db,"users","mohasin"),{
+
     pass:newPass
+
   });
 
-  alert("Password changed!");
+  alert("Admin Password Changed");
+
 };
 
+
 // STOCK VIEW
-onSnapshot(collection(db,"stock"),snap=>{
-  let out="<tr><th>Name</th><th>Qty</th><th>Loc</th><th>Quality</th></tr>";
-  snap.forEach(doc=>{
-    let d=doc.data();
-    out+=`<tr><td>${d.name}</td><td>${d.qty}</td><td>${d.loc}</td><td>${d.quality}</td></tr>`;
+onSnapshot(collection(db,"stock"),(snapshot)=>{
+
+  let out = `
+  <tr>
+    <th>Parts Name</th>
+    <th>Quantity</th>
+    <th>Location</th>
+    <th>Quality</th>
+  </tr>
+  `;
+
+  snapshot.forEach((docItem)=>{
+
+    let d = docItem.data();
+
+    out += `
+    <tr>
+      <td>${d.name}</td>
+      <td>${d.qty}</td>
+      <td>${d.loc}</td>
+      <td>${d.quality}</td>
+    </tr>
+    `;
+
   });
-  stockTable.innerHTML=out;
+
+  document.getElementById("stockTable").innerHTML = out;
+
 });
 
-// HISTORY
-onSnapshot(collection(db,"history"),snap=>{
-  let out="<tr><th>Item</th><th>Action</th><th>User</th></tr>";
-  snap.forEach(doc=>{
-    let d=doc.data();
-    out+=`<tr><td>${d.item}</td><td>${d.type} ${d.qty}</td><td>${d.user}</td></tr>`;
+
+// HISTORY VIEW
+onSnapshot(collection(db,"history"),(snapshot)=>{
+
+  let out = `
+  <tr>
+    <th>Item</th>
+    <th>Action</th>
+    <th>User</th>
+  </tr>
+  `;
+
+  snapshot.forEach((docItem)=>{
+
+    let d = docItem.data();
+
+    out += `
+    <tr>
+      <td>${d.item}</td>
+      <td>${d.type} ${d.qty}</td>
+      <td>${d.user}</td>
+    </tr>
+    `;
+
   });
-  historyTable.innerHTML=out;
+
+  document.getElementById("historyTable").innerHTML = out;
+
 });
 
 </script>
+
 </body>
 </html>
